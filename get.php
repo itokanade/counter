@@ -1,9 +1,17 @@
 <?php
 
-define('DATA_FILE', 'data.txt');
+define('DB_DSN',  'mysql:dbname=access;host=127.0.0.1');  
+define('DB_USER', 'senpai');    
+define('DB_PW',   'indocurry');
 
 
-$count = getCounter(DATA_FILE);
+$dbh = connectDB(DB_DSN, DB_USER, DB_PW);
+
+
+addCounter($dbh);
+
+
+$count = getCounter($dbh);
 
 
 header('Content-type: application/json');
@@ -14,22 +22,38 @@ echo json_encode([
 
 
 
-function getCounter($file){
+function connectDB($dsn, $user, $pw){
+    $dbh = new PDO($dsn, $user, $pw);   
+    return($dbh);
+}
+
+
+function addCounter($dbh){
     
-    $fp = fopen($file, 'r+'); 
-    flock($fp, LOCK_EX);      
-    $buff = (int)fgets($fp); 
+    $sql = 'INSERT INTO access_log(accesstime) VALUES(now())';
 
     
-    ftruncate($fp, 0);    
-    fseek($fp, 0);        
+    $sth = $dbh->prepare($sql);   
+    $ret = $sth->execute();       
+
+    return($ret);
+}
+
+
+function getCounter($dbh){
+    
+    $sql = 'SELECT count(*) as count FROM access_log';
 
     
-    fwrite($fp, $buff+1);
+    $sth = $dbh->prepare($sql);    
+    $sth->execute();               
 
     
-    flock($fp, LOCK_UN);  
-    fclose($fp);          
-
-    return($buff);
+    $buff = $sth->fetch(PDO::FETCH_ASSOC);
+    if( $buff === false){
+        return(false);
+    }
+    else{
+        return( $buff['count'] );
+    }
 }
